@@ -1,0 +1,250 @@
+---
+title: 'Backend REST API Contract Required by Sistema de Gestión'
+description: 'Full specification of the REST endpoints, request bodies, and response shapes the backend must implement for the React frontend to function correctly.'
+keywords: ['backend', 'REST API', 'endpoints', 'CORS', 'alumnos', 'materias', 'notas', 'API contract']
+---
+
+The Sistema de Gestión frontend communicates exclusively with a REST API whose base URL is set via [`REACT_APP_API_URL`](/configuration/environment). All HTTP calls are made through a shared [axios](https://axios-http.com) instance, so every endpoint listed below is resolved relative to that base URL. The backend must implement all endpoints described here for the application to function correctly.
+
+## CORS requirement
+
+<Warning>
+The backend must enable CORS for the origin where the frontend is served (for example, `http://localhost:3000`). Without it, browsers will block every request from the React app, and none of the features will load.
+</Warning>
+
+## Endpoints overview
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/alumnos` | List all students |
+| `POST` | `/alumnos` | Create a student |
+| `PUT` | `/alumnos/:id` | Update a student |
+| `DELETE` | `/alumnos/:id` | Delete a student |
+| `GET` | `/materias` | List all subjects |
+| `POST` | `/materias` | Create a subject |
+| `PUT` | `/materias/:id` | Update a subject |
+| `DELETE` | `/materias/:id` | Delete a subject |
+| `GET` | `/notas` | List all grades |
+| `POST` | `/notas` | Create a grade |
+| `PUT` | `/notas/:id` | Update a grade |
+| `DELETE` | `/notas/:id` | Delete a grade |
+
+## Students — `/alumnos`
+
+### `GET /alumnos`
+
+Returns an array of all students. The frontend sorts the list by `apellido` client-side.
+
+**Response body** — array of:
+
+<ResponseField name="id" type="number" required>
+  Unique identifier for the student.
+</ResponseField>
+
+<ResponseField name="nombre" type="string" required>
+  Student's first name.
+</ResponseField>
+
+<ResponseField name="apellido" type="string" required>
+  Student's last name.
+</ResponseField>
+
+<ResponseField name="email" type="string" required>
+  Student's email address.
+</ResponseField>
+
+<ResponseField name="fechaNacimiento" type="string" required>
+  Date of birth. The frontend displays this value as-is, so ISO 8601 format (`YYYY-MM-DD`) is recommended.
+</ResponseField>
+
+### `POST /alumnos`
+
+Creates a new student. The frontend sends the form fields without an `id`.
+
+**Request body:**
+
+<ParamField body="nombre" type="string" required>
+  Student's first name.
+</ParamField>
+
+<ParamField body="apellido" type="string" required>
+  Student's last name.
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  Student's email address.
+</ParamField>
+
+<ParamField body="fechaNacimiento" type="string" required>
+  Date of birth in `YYYY-MM-DD` format.
+</ParamField>
+
+### `PUT /alumnos/:id`
+
+Updates an existing student. The frontend sends the full alumno object including `id`.
+
+**Request body:** same shape as the `GET /alumnos` response object, with `id` included.
+
+### `DELETE /alumnos/:id`
+
+Deletes a student. If the student has grades registered in the system, the backend must return an error response so the frontend can display a meaningful message to the user.
+
+**Guarded delete error response:**
+
+<ResponseField name="message" type="string" required>
+  Human-readable explanation of why the deletion was rejected (for example, `"El alumno tiene notas registradas"`). The frontend reads `error.response.data.message` and displays this string in a modal.
+</ResponseField>
+
+---
+
+## Subjects — `/materias`
+
+### `GET /materias`
+
+Returns an array of all subjects. The frontend sorts the list by `nombre` client-side.
+
+**Response body** — array of:
+
+<ResponseField name="id" type="number" required>
+  Unique identifier for the subject.
+</ResponseField>
+
+<ResponseField name="nombre" type="string" required>
+  Subject name.
+</ResponseField>
+
+### `POST /materias`
+
+Creates a new subject.
+
+**Request body:**
+
+<ParamField body="nombre" type="string" required>
+  Subject name.
+</ParamField>
+
+### `PUT /materias/:id`
+
+Updates an existing subject. The frontend sends the full materia object including `id`.
+
+**Request body:** same shape as the `GET /materias` response object, with `id` included.
+
+### `DELETE /materias/:id`
+
+Deletes a subject. If the subject has grades registered, the backend must return an error response with a `message` field (same format as the guarded alumno delete above).
+
+---
+
+## Grades — `/notas`
+
+### `GET /notas`
+
+Returns an array of all grades. The frontend sorts the list by `alumnoApellido` client-side.
+
+**Response body** — array of:
+
+<ResponseField name="id" type="number" required>
+  Unique identifier for the grade record.
+</ResponseField>
+
+<ResponseField name="alumnoId" type="number" required>
+  ID of the student this grade belongs to.
+</ResponseField>
+
+<ResponseField name="alumnoNombre" type="string" required>
+  First name of the student. Returned as a denormalized field so the list view does not require a separate lookup.
+</ResponseField>
+
+<ResponseField name="alumnoApellido" type="string" required>
+  Last name of the student. Used for client-side sorting.
+</ResponseField>
+
+<ResponseField name="materiaId" type="number" required>
+  ID of the subject this grade belongs to.
+</ResponseField>
+
+<ResponseField name="materiaNombre" type="string" required>
+  Name of the subject. Returned as a denormalized field for display in the list.
+</ResponseField>
+
+<ResponseField name="valor" type="number" required>
+  The numeric grade value. The frontend input uses `step="0.1"`, so decimal values are expected.
+</ResponseField>
+
+### `POST /notas`
+
+Creates a new grade. The frontend sends nested objects for `alumno` and `materia`.
+
+**Request body:**
+
+<ParamField body="valor" type="number" required>
+  The numeric grade value.
+</ParamField>
+
+<ParamField body="alumno" type="object" required>
+  <Expandable title="properties">
+    <ParamField body="id" type="number" required>
+      ID of the student to assign the grade to.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="materia" type="object" required>
+  <Expandable title="properties">
+    <ParamField body="id" type="number" required>
+      ID of the subject the grade is for.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+```json Example POST /notas body
+{
+  "valor": 8.5,
+  "alumno": { "id": 3 },
+  "materia": { "id": 1 }
+}
+```
+
+### `PUT /notas/:id`
+
+Updates an existing grade. The frontend sends the full payload including the top-level `id` plus nested objects.
+
+**Request body:** same shape as `POST /notas`, with the addition of a top-level `id` field matching the path parameter.
+
+```json Example PUT /notas/7 body
+{
+  "id": 7,
+  "valor": 9.0,
+  "alumno": { "id": 3 },
+  "materia": { "id": 1 }
+}
+```
+
+### `DELETE /notas/:id`
+
+Deletes a grade record. No guarded delete is required — the frontend calls this directly and reloads the list on success.
+
+---
+
+## Error response format
+
+For guarded deletes (`DELETE /alumnos/:id` and `DELETE /materias/:id`), return a non-2xx HTTP status with a JSON body in this shape:
+
+```json Error response body
+{
+  "message": "Description of why the operation was rejected."
+}
+```
+
+The frontend reads `error.response.data.message` from the axios error object and displays it in a modal dialog. If `message` is absent, the frontend falls back to a hardcoded default message.
+
+## Related pages
+
+<CardGroup>
+  <Card title="Environment configuration" icon="sliders" href="/configuration/environment">
+    Set REACT_APP_API_URL to point the frontend at your backend.
+  </Card>
+  <Card title="API integration" icon="plug" href="/architecture/api-integration">
+    How the axios instance and services layer are structured.
+  </Card>
+</CardGroup>

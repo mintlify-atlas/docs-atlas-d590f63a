@@ -1,0 +1,258 @@
+---
+title: 'React Component Reference: Props, State, and API Calls'
+description: 'Reference for all six React components — props, state, effects, API calls, and rendered output — plus the shared CSS class system used throughout the app.'
+keywords: ['react', 'components', 'props', 'useeffect', 'alumnos', 'materias', 'notas', 'css']
+---
+
+The application is composed of six React components organised into three feature pairs: a form component and a list component for each of Students, Subjects, and Grades. All components import the shared Axios instance from `src/services/api.js` and the global stylesheet from `src/styles/global.css`.
+
+## Component overview
+
+| Component | File | Role |
+|---|---|---|
+| `AlumnosFormulario` | `src/components/Alumnos/AlumnosFormulario.js` | Create or edit a student record |
+| `AlumnosLista` | `src/components/Alumnos/AlumnosLista.js` | Display, edit, and delete students |
+| `MateriasFormulario` | `src/components/Materias/MateriasFormulario.js` | Create or edit a subject |
+| `MateriasLista` | `src/components/Materias/MateriasLista.js` | Display, edit, and delete subjects |
+| `NotasFormulario` | `src/components/Notas/NotasFormulario.js` | Create or edit a grade |
+| `NotasLista` | `src/components/Notas/NotasLista.js` | Display, edit, and delete grades |
+
+## Component details
+
+<AccordionGroup>
+  <Accordion title="AlumnosFormulario" icon="user-pen">
+    Renders a form for creating or editing a student. The title switches between "Crear Alumno" and "Editar Alumno" depending on whether `alumnoSeleccionado` contains an `id`.
+
+    **Props**
+
+    <ParamField path="props.alumnoSeleccionado" type="object | null">
+      The student object to edit, or `null` when creating a new record. When a non-null value is received, a `useEffect` populates the form fields via `setAlumno(alumnoSeleccionado)`.
+    </ParamField>
+
+    <ParamField path="props.alGuardar" type="function" required>
+      Callback invoked after a successful POST or PUT. In `App.js` this is `actualizarAlumnos`, which resets `alumnoSeleccionado` to `null` and flips the refresh toggle.
+    </ParamField>
+
+    **Internal state**
+
+    | Variable | Initial value | Purpose |
+    |---|---|---|
+    | `alumno` | `{ nombre, apellido, email, fechaNacimiento }` | Controlled form values |
+    | `error` | `""` | Validation error message |
+    | `mostrarError` | `false` | Toggles the error modal |
+
+    **Effects**
+
+    - `useEffect([alumnoSeleccionado])` — when `alumnoSeleccionado` changes to a non-null value, copies it into local `alumno` state to populate the form.
+
+    **API calls**
+
+    - `api.post("/alumnos", alumno)` — when `alumno.id` is absent (create mode).
+    - `api.put("/alumnos/${alumno.id}", alumno)` — when `alumno.id` is present (edit mode).
+
+    **Rendered output**
+
+    A `.container > .form` with two side-by-side `.input` fields for nombre/apellido (`.row`), individual inputs for email and fechaNacimiento, and a `.button` submit button. A `.modalOverlay` error modal is conditionally rendered when `mostrarError` is `true`.
+  </Accordion>
+
+  <Accordion title="AlumnosLista" icon="users">
+    Fetches and displays all students sorted alphabetically by last name. Provides edit and delete actions for each row.
+
+    **Props**
+
+    <ParamField path="props.onEditar" type="function" required>
+      Callback invoked with the full alumno object when the user clicks "Editar". In `App.js` this is `setAlumnoSeleccionado`, which passes the object down to `AlumnosFormulario`.
+    </ParamField>
+
+    **Internal state**
+
+    | Variable | Initial value | Purpose |
+    |---|---|---|
+    | `alumnos` | `[]` | Array of student objects from the API |
+    | `error` | `""` | Server-side error message from failed DELETE |
+    | `mostrarError` | `false` | Toggles the error modal |
+
+    **Effects**
+
+    - `useEffect([])` — calls `cargarAlumnos()` on mount. Because `App.js` passes `refrescarAlumnos` as the `key` prop, changing the key value remounts this component and triggers a fresh fetch.
+
+    **API calls**
+
+    - `api.get("/alumnos")` — on mount; response is sorted by `apellido`.
+    - `api.delete("/alumnos/${alumno.id}")` — on delete button click; re-calls `cargarAlumnos()` on success or shows an error modal on failure.
+
+    **Rendered output**
+
+    A `.container` with a `.list` (`<ul>`). Each student renders as a `.item` (`<li>`) using a CSS Grid with columns for apellido/nombre, email, fechaNacimiento, and action buttons (`.editBtn`, `.deleteBtn`).
+
+    <Note>
+      Deletion is blocked by the backend if the student has associated grades. The error modal displays the `message` field from the API response, or a default Spanish message.
+    </Note>
+  </Accordion>
+
+  <Accordion title="MateriasFormulario" icon="book-open-cover">
+    Renders a single-field form for creating or editing a subject name.
+
+    **Props**
+
+    <ParamField path="props.materiaSeleccionada" type="object | null">
+      The subject object to edit (`{ id, nombre }`), or `null` when creating. A `useEffect` copies this value into local state when it changes.
+    </ParamField>
+
+    <ParamField path="props.alGuardar" type="function" required>
+      Callback invoked after a successful POST or PUT. In `App.js` this is `actualizarMaterias`.
+    </ParamField>
+
+    **Internal state**
+
+    | Variable | Initial value | Purpose |
+    |---|---|---|
+    | `materia` | `{ nombre: "" }` | Controlled form value |
+    | `error` | `""` | Validation error message |
+    | `mostrarError` | `false` | Toggles the error modal |
+
+    **Effects**
+
+    - `useEffect([materiaSeleccionada])` — populates the form when a subject is selected for editing.
+
+    **API calls**
+
+    - `api.post("/materias", materia)` — create mode (no `id`).
+    - `api.put("/materias/${materia.id}", materia)` — edit mode.
+
+    **Rendered output**
+
+    A `.container > .form` with a single `.input` for the subject name and a `.button` submit button. Validation requires a non-empty, non-whitespace nombre before any API call is made.
+  </Accordion>
+
+  <Accordion title="MateriasLista" icon="list-ul">
+    Fetches and displays all subjects sorted alphabetically by name. Provides edit and delete actions.
+
+    **Props**
+
+    <ParamField path="props.onEditar" type="function" required>
+      Callback invoked with the full materia object when "Editar" is clicked. In `App.js` this is `setMateriaSeleccionada`.
+    </ParamField>
+
+    **Internal state**
+
+    | Variable | Initial value | Purpose |
+    |---|---|---|
+    | `materias` | `[]` | Array of subject objects |
+    | `error` | `""` | Server-side error message |
+    | `mostrarError` | `false` | Toggles the error modal |
+
+    **Effects**
+
+    - `useEffect([])` — calls `cargarMaterias()` on mount. Remounted when `refrescarMaterias` key changes.
+
+    **API calls**
+
+    - `api.get("/materias")` — on mount; response is sorted by `nombre`.
+    - `api.delete("/materias/${materia.id}")` — on delete; re-fetches list on success or shows modal on failure.
+
+    **Rendered output**
+
+    A `.container` with a `.list`. Each subject renders as a `.materiaItem` (`<li>`) with a two-column grid: `.materiaText` for the name and `.materiaButtons` for the edit/delete buttons.
+
+    <Note>
+      Deletion is blocked by the backend if the subject has associated grades. The same error modal pattern used in `AlumnosLista` applies here.
+    </Note>
+  </Accordion>
+
+  <Accordion title="NotasFormulario" icon="pencil">
+    Renders a form for creating or editing a grade. Pre-fetches student and subject lists to populate two `<select>` dropdowns.
+
+    **Props**
+
+    <ParamField path="props.notaSeleccionada" type="object | null">
+      The grade object to edit, containing `{ id, alumnoId, materiaId, valor }`, or `null` for create mode. Mapped into local state by a `useEffect`.
+    </ParamField>
+
+    <ParamField path="props.alGuardar" type="function" required>
+      Callback invoked after a successful POST or PUT. In `App.js` this is `actualizarNotas`.
+    </ParamField>
+
+    **Internal state**
+
+    | Variable | Initial value | Purpose |
+    |---|---|---|
+    | `alumnos` | `[]` | Student list for the alumno `<select>` |
+    | `materias` | `[]` | Subject list for the materia `<select>` |
+    | `nota` | `{ id, alumnoId, materiaId, valor }` | Controlled form values |
+
+    **Effects**
+
+    - `useEffect([])` — fetches `/alumnos` and `/materias` on mount to populate the dropdowns. Students are sorted by `apellido`.
+    - `useEffect([notaSeleccionada])` — when a grade is selected for editing, maps its fields into local `nota` state.
+
+    **API calls**
+
+    - `api.get("/alumnos")` and `api.get("/materias")` — on mount (dropdown data).
+    - `api.post("/notas", payload)` — create mode. Payload uses nested objects: `{ alumno: { id }, materia: { id }, valor }`.
+    - `api.put("/notas/${nota.id}", payload)` — edit mode with the same nested payload.
+
+    **Rendered output**
+
+    A `.container > .form` with two `.input`-styled `<select>` elements (alumno, materia), a numeric `.input` for the grade value (step 0.1), and a `.button` submit button.
+  </Accordion>
+
+  <Accordion title="NotasLista" icon="table-list">
+    Fetches and displays all grade records sorted alphabetically by student last name. Provides edit and delete actions.
+
+    **Props**
+
+    <ParamField path="props.onEditar" type="function" required>
+      Callback invoked with the full nota object when "Editar" is clicked. Uses optional chaining (`onEditar?.(n)`) for safety.
+    </ParamField>
+
+    **Internal state**
+
+    | Variable | Initial value | Purpose |
+    |---|---|---|
+    | `notas` | `[]` | Array of grade objects |
+
+    **Effects**
+
+    - `useEffect([])` — calls `cargar()` on mount. Remounted when `refrescarNotas` key changes.
+
+    **API calls**
+
+    - `api.get("/notas")` — on mount; response is sorted by `alumnoApellido`.
+    - `api.delete("/notas/${id}")` — on delete; re-calls `cargar()` on success. Errors are logged to the console only (no error modal).
+
+    **Rendered output**
+
+    A `.container` with a `.list`. Each grade renders as an `.item` with a CSS Grid showing alumnoApellido/alumnoNombre, materiaNombre, the numeric valor, and edit/delete buttons.
+  </Accordion>
+</AccordionGroup>
+
+## Shared CSS class system
+
+All components import `src/styles/global.css`, which defines a shared set of BEM-style class names. No CSS Modules or Tailwind are used.
+
+| Class | Element | Purpose |
+|---|---|---|
+| `.container` | `<div>` | Outer wrapper with 20px padding and `#f4f6f8` background |
+| `.title` | `<h2>` | Centred section heading in `#2c3e50` |
+| `.form` | `<form>` | White card with border, shadow, and `max-width: 600px` |
+| `.row` | `<div>` | Two-column grid (`1fr 1fr`) for side-by-side inputs |
+| `.input` | `<input>`, `<select>` | Full-width field with border, border-radius, and blue focus ring |
+| `.button` | `<button>` | Full-width green submit button |
+| `.list` | `<ul>` | Unstyled list (no bullets, no padding) |
+| `.item` | `<li>` | White card row with 5-column grid for student/grade rows |
+| `.materiaItem` | `<li>` | White card row with 2-column grid for subject rows |
+| `.materiaText` | `<div>` | Subject name text in `#555` |
+| `.materiaButtons` | `<div>` | Right-aligned flex container for edit/delete buttons |
+| `.text` | `<div>` | General data text in `#555` |
+| `.buttons` | `<div>` | Flex container with 8px gap for action buttons |
+| `.editBtn` | `<button>` | Blue (`#3498db`) action button |
+| `.deleteBtn` | `<button>` | Red (`#e74c3c`) action button |
+| `.menu` | `<div>` | Centred flex navigation bar |
+| `.modalOverlay` | `<div>` | Fixed full-screen semi-transparent backdrop (`z-index: 999`) |
+| `.modal` | `<div>` | Centred white dialog box (`320px` wide) |
+| `.modalBtn` | `<button>` | Red close button inside the modal |
+
+<Tip>
+The `.item` class uses `grid-template-columns: 2fr 2fr 2fr 1.5fr auto`, sizing data columns proportionally and giving the button column only as much space as it needs.
+</Tip>

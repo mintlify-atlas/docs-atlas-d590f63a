@@ -1,0 +1,157 @@
+---
+title: 'How Sistema de Gestión Is Architected and Deployed'
+description: 'Understand how the React SPA, REST API integration, and Docker/Nginx deployment fit together to form the Sistema de Gestión frontend application.'
+keywords: ['architecture', 'react', 'spa', 'docker', 'nginx', 'state management']
+---
+
+The Sistema de Gestión frontend is a single-page application (SPA) built with React 19 and served by Nginx inside a Docker container. The application communicates with a backend REST API using Axios and organises its UI into three feature modules — Students (Alumnos), Subjects (Materias), and Grades (Notas) — each controlled by a single `vista` state value in `App.js`.
+
+## Technology stack
+
+| Layer | Technology |
+|---|---|
+| UI framework | React 19 (`react`, `react-dom`) |
+| HTTP client | Axios 1.x |
+| Build tool | Create React App (`react-scripts 5`) |
+| Web server | Nginx (Alpine) |
+| Container | Docker multi-stage build |
+
+## Docker and Nginx deployment
+
+The application is built and served via a two-stage Dockerfile. The first stage uses the official `node:20` image to produce a production build (`npm run build`). The second stage copies the resulting `/app/build` directory into an Nginx Alpine image and serves it on port 80.
+
+```dockerfile Dockerfile
+# Stage 1 — build
+FROM node:20 AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+# Stage 2 — serve
+FROM nginx:alpine
+COPY --from=build /app/build /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+<Note>
+The `REACT_APP_API_URL` environment variable must be set at **build time** so that Create React App can embed it in the bundle. See the [Environment Configuration](/configuration/environment) page for details.
+</Note>
+
+## View-switching pattern
+
+`App.js` controls which feature module is displayed using a single `vista` state variable initialised to `"alumnos"`. Three menu buttons call `setVista` to switch between the three values: `"alumnos"`, `"materias"`, and `"notas"`. Only the matching JSX block is rendered at a time.
+
+```js App.js (simplified)
+import { useState } from "react";
+import AlumnosLista from "./components/Alumnos/AlumnosLista";
+import AlumnosFormulario from "./components/Alumnos/AlumnosFormulario";
+import MateriasLista from "./components/Materias/MateriasLista";
+import MateriasFormulario from "./components/Materias/MateriasFormulario";
+import NotasFormulario from "./components/Notas/NotasFormulario";
+import NotasLista from "./components/Notas/NotasLista";
+
+function App() {
+  // Active view
+  const [vista, setVista] = useState("alumnos");
+
+  // Selected record for editing (null = create mode)
+  const [alumnoSeleccionado, setAlumnoSeleccionado] = useState(null);
+  const [materiaSeleccionada, setMateriaSeleccionada] = useState(null);
+  const [notaSeleccionada, setNotaSeleccionada] = useState(null);
+
+  // Refresh toggles — flipping the value forces a new key on the list
+  const [refrescarAlumnos, setRefrescarAlumnos] = useState(false);
+  const [refrescarMaterias, setRefrescarMaterias] = useState(false);
+  const [refrescarNotas, setRefrescarNotas] = useState(false);
+
+  const actualizarAlumnos = () => {
+    setAlumnoSeleccionado(null);
+    setRefrescarAlumnos(!refrescarAlumnos);
+  };
+
+  return (
+    <div>
+      <h1>Sistema de Gestión</h1>
+
+      <div className="menu">
+        <button onClick={() => setVista("alumnos")}>Alumnos</button>
+        <button onClick={() => setVista("materias")}>Materias</button>
+        <button onClick={() => setVista("notas")}>Notas</button>
+      </div>
+
+      {vista === "alumnos" && (
+        <>
+          <AlumnosFormulario
+            alumnoSeleccionado={alumnoSeleccionado}
+            alGuardar={actualizarAlumnos}
+          />
+          <AlumnosLista key={refrescarAlumnos} onEditar={setAlumnoSeleccionado} />
+        </>
+      )}
+
+      {vista === "materias" && ( /* ... */ )}
+      {vista === "notas"    && ( /* ... */ )}
+    </div>
+  );
+}
+```
+
+## Top-level state groups
+
+`App.js` maintains three independent state groups, one per feature module.
+
+| State pair | Purpose |
+|---|---|
+| `alumnoSeleccionado` / `setAlumnoSeleccionado` | Holds the student object being edited, or `null` when creating. |
+| `materiaSeleccionada` / `setMateriaSeleccionada` | Holds the subject object being edited, or `null` when creating. |
+| `notaSeleccionada` / `setNotaSeleccionada` | Holds the grade object being edited, or `null` when creating. |
+
+## Refresh toggle pattern
+
+Each list component (`AlumnosLista`, `MateriasLista`, `NotasLista`) fetches data once on mount inside a `useEffect`. To force a re-fetch after a create or update, `App.js` passes the boolean toggle value (`refrescarAlumnos`, etc.) as the React `key` prop on the list. Flipping the boolean between `true` and `false` unmounts and remounts the list, triggering its `useEffect` again.
+
+```js Refresh toggle example
+// After a save, reset the selected record and flip the toggle
+const actualizarAlumnos = () => {
+  setAlumnoSeleccionado(null);
+  setRefrescarAlumnos(!refrescarAlumnos); // key changes → list remounts
+};
+
+// In JSX:
+<AlumnosLista key={refrescarAlumnos} onEditar={setAlumnoSeleccionado} />
+```
+
+## Component tree
+
+```
+App
+├── menu buttons (setVista)
+├── [vista === "alumnos"]
+│   ├── AlumnosFormulario  (alumnoSeleccionado, alGuardar)
+│   └── AlumnosLista       (key=refrescarAlumnos, onEditar)
+├── [vista === "materias"]
+│   ├── MateriasFormulario (materiaSeleccionada, alGuardar)
+│   └── MateriasLista      (key=refrescarMaterias, onEditar)
+└── [vista === "notas"]
+    ├── NotasFormulario    (notaSeleccionada, alGuardar)
+    └── NotasLista         (key=refrescarNotas, onEditar)
+```
+
+Each view renders a **Formulario** (form) component above a **Lista** (list) component. The form handles both create and edit modes depending on whether a selected record is passed to it. The list handles display and deletion.
+
+## Feature modules
+
+<CardGroup cols={3}>
+  <Card title="Students" icon="user-graduate" href="/features/students">
+    Manage student records including name, email, and date of birth.
+  </Card>
+  <Card title="Subjects" icon="book" href="/features/subjects">
+    Create and update the subjects available for grade assignment.
+  </Card>
+  <Card title="Grades" icon="star" href="/features/grades">
+    Record and edit numeric grades linking students to subjects.
+  </Card>
+</CardGroup>

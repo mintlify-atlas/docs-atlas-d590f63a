@@ -1,0 +1,111 @@
+---
+title: 'Environment Variable Configuration for Sistema de Gestión'
+description: 'Learn how to configure REACT_APP_API_URL for the React frontend, understand build-time embedding, and set values correctly before building the Docker image.'
+keywords: ['environment variables', 'REACT_APP_API_URL', 'Create React App', 'build args', 'Docker', 'configuration']
+---
+
+The Sistema de Gestión frontend uses a single environment variable to locate the backend API. Because Create React App embeds environment variables at build time — not runtime — you must provide the correct value before building the application or the Docker image.
+
+## The `REACT_APP_API_URL` variable
+
+`REACT_APP_API_URL` is the only environment variable consumed by this application. It is passed directly to [axios](https://axios-http.com) as the `baseURL` for every HTTP request the frontend makes:
+
+```js src/services/api.js
+import axios from "axios";
+
+const api = axios.create({
+    baseURL: process.env.REACT_APP_API_URL
+});
+
+export default api;
+```
+
+If this variable is not set at build time, `baseURL` will be `undefined` and all API calls will fail silently.
+
+## Create React App build-time embedding
+
+<Note>
+Create React App only exposes environment variables prefixed with `REACT_APP_` to the browser bundle. Variables without this prefix are ignored and will not be available in the compiled JavaScript.
+</Note>
+
+When you run `npm run build`, Create React App reads `.env` files and replaces every reference to `process.env.REACT_APP_*` with the literal string value. The resulting `build/` folder contains the substituted values baked into static JS files. There is no runtime environment injection mechanism unless you add one explicitly.
+
+## Setting the variable in `.env`
+
+Create a `.env` file in the project root (next to `package.json`) with the following content:
+
+```env .env
+REACT_APP_API_URL=http://localhost:8080
+```
+
+The default value committed to this repository points to Docker's host gateway, which works when the backend runs on the host machine and the frontend runs inside a Docker container:
+
+```env .env (default in repository)
+REACT_APP_API_URL=http://host.docker.internal:8080
+```
+
+Adjust the value to match your deployment environment before building.
+
+## Passing the value as a Docker build argument
+
+The current `Dockerfile` does not declare a `ARG` for `REACT_APP_API_URL`, so the build reads the value from the `.env` file present in the build context. If you want to override it without modifying `.env`, extend the `Dockerfile` to accept a build argument:
+
+```dockerfile Dockerfile (extended)
+FROM node:20 AS build
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+ARG REACT_APP_API_URL
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+
+RUN npm run build
+
+FROM nginx:alpine
+
+COPY --from=build /app/build /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+Then pass the value at build time:
+
+```bash
+docker build \
+  --build-arg REACT_APP_API_URL=http://api.example.com:8080 \
+  -t frontend .
+```
+
+<Warning>
+Changing `REACT_APP_API_URL` requires a full rebuild of the Docker image. Updating `.env` or a build argument after the image has already been built has no effect — the old value is already compiled into the static bundle.
+</Warning>
+
+## `.env` file loading order
+
+Create React App reads `.env` files in the following order, with later files taking precedence:
+
+| File | When it applies |
+|---|---|
+| `.env` | All environments |
+| `.env.local` | All environments, ignored by git |
+| `.env.development` | `npm start` only |
+| `.env.production` | `npm run build` only |
+
+For Docker-based production builds, `.env` or `.env.production` are the relevant files.
+
+## Related pages
+
+<CardGroup>
+  <Card title="Docker deployment" icon="docker" href="/docker-deployment">
+    Build and run the full Docker image including build args.
+  </Card>
+  <Card title="Backend requirements" icon="server" href="/configuration/backend-requirements">
+    What the backend must expose at the configured URL.
+  </Card>
+</CardGroup>

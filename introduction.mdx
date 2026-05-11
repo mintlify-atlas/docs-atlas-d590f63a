@@ -1,0 +1,56 @@
+---
+title: 'Sistema de Gestión: Student and Grade App Overview'
+description: 'Learn what the Sistema de Gestión frontend does, which views it provides, and how React, Axios, Nginx, and Docker work together to deliver it.'
+---
+
+Sistema de Gestión is a React-based web application for managing students, subjects, and grades. It communicates with a REST API through Axios, and is packaged for production using a multi-stage Docker build that serves the compiled output with Nginx.
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Student management" icon="user-graduate" href="/features/students">
+    Create, edit, and delete student records. The Alumnos view renders a form and a live list that refreshes after every save.
+  </Card>
+  <Card title="Subject management" icon="book-open" href="/features/subjects">
+    Manage the catalog of subjects (Materias) available in the system, with inline editing and instant list updates.
+  </Card>
+  <Card title="Grade management" icon="chart-bar" href="/features/grades">
+    Assign and update grades (Notas) that link a student to a subject, with a dedicated form and list view.
+  </Card>
+  <Card title="Docker-ready deployment" icon="docker" href="/docker-deployment">
+    A two-stage Dockerfile builds the React app with Node 20 and serves it with Nginx Alpine — no runtime Node dependency in production.
+  </Card>
+</CardGroup>
+
+## Application views
+
+The app renders one view at a time, controlled by a top-level navigation menu with three buttons.
+
+**Alumnos** — The students view displays `AlumnosFormulario` for creating or editing a student record, and `AlumnosLista` for browsing all students. Selecting a row in the list populates the form for editing.
+
+**Materias** — The subjects view follows the same pattern with `MateriasFormulario` and `MateriasLista`, allowing full CRUD operations on the subjects catalog.
+
+**Notas** — The grades view combines `NotasFormulario` and `NotasLista` to assign grades that associate a student with a subject and a score.
+
+## Technology stack
+
+| Layer | Technology |
+|---|---|
+| UI framework | React 19 |
+| HTTP client | Axios 1.x |
+| Build tool | react-scripts 5 (Create React App) |
+| Web server | Nginx Alpine |
+| Container runtime | Docker (multi-stage build) |
+
+All API calls are routed through a shared Axios instance configured with the `REACT_APP_API_URL` environment variable, keeping base URL management in one place (`src/services/api.js`).
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="play" href="/quickstart">
+    Run the app locally with npm in under five minutes.
+  </Card>
+  <Card title="Docker deployment" icon="server" href="/docker-deployment">
+    Build and run the production container with Docker.
+  </Card>
+</CardGroup>

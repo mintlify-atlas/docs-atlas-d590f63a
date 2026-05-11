@@ -1,0 +1,59 @@
+{
+  "projectType": "frontend",
+  "projectName": "Sistema de Gestión",
+  "projectDescription": "A React-based student management system for managing students (alumnos), subjects (materias), and grades (notas), served via Nginx in Docker.",
+  "theme": "almond",
+  "primaryColor": "#3498db",
+  "lightColor": "#2ecc71",
+  "darkColor": "#2c3e50",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart", "docker-deployment"]
+          },
+          {
+            "group": "Features",
+            "pages": ["features/students", "features/subjects", "features/grades"]
+          },
+          {
+            "group": "Architecture",
+            "pages": ["architecture/overview", "architecture/api-integration", "architecture/components"]
+          },
+          {
+            "group": "Configuration",
+            "pages": ["configuration/environment", "configuration/backend-requirements"]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "CRUD management for students (alumnos) with name, email, and date of birth",
+    "CRUD management for subjects (materias) linked to grade records",
+    "Grade (notas) recording associating students with subjects and numeric scores",
+    "Alphabetically sorted lists for students and subjects",
+    "Inline edit forms pre-populated from selected list items",
+    "Validation modals with error feedback before API submission",
+    "Guarded deletion preventing removal of students or subjects with existing grades",
+    "Dockerized build using multi-stage Node 20 + Nginx Alpine image",
+    "Axios-based API client configured via REACT_APP_API_URL environment variable"
+  ],
+  "publicApiSurface": [
+    "GET /alumnos — list all students",
+    "POST /alumnos — create a student",
+    "PUT /alumnos/:id — update a student",
+    "DELETE /alumnos/:id — delete a student",
+    "GET /materias — list all subjects",
+    "POST /materias — create a subject",
+    "PUT /materias/:id — update a subject",
+    "DELETE /materias/:id — delete a subject",
+    "GET /notas — list all grades",
+    "POST /notas — create a grade",
+    "PUT /notas/:id — update a grade",
+    "DELETE /notas/:id — delete a grade"
+  ]
+}

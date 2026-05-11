@@ -1,0 +1,128 @@
+---
+title: 'Deploy Sistema de Gestión with Docker and Nginx Alpine'
+description: 'Build a production-ready container image with a two-stage Dockerfile and serve the React app through Nginx Alpine on port 3000 of your host machine.'
+---
+
+Sistema de Gestión ships with a multi-stage Dockerfile that compiles the React application using Node 20 and then serves the static output with Nginx Alpine. The result is a small production image with no Node.js runtime — only the compiled HTML, CSS, and JavaScript files and a minimal web server.
+
+<Warning>
+  `REACT_APP_API_URL` is embedded into the JavaScript bundle at **build time**, not at runtime. You must provide the correct backend URL before running `docker build`. Changing the environment variable after the image is built has no effect — you need to rebuild the image.
+</Warning>
+
+## How the Dockerfile works
+
+The build uses two stages to keep the final image lean.
+
+```dockerfile
+# 1. Build de la app
+FROM node:20 AS build
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+RUN npm run build
+
+# 2. Servir con nginx
+FROM nginx:alpine
+
+COPY --from=build /app/build /usr/share/nginx/html
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+**Stage 1 — `build`**: Uses the official `node:20` image. It installs npm dependencies, copies the source, and runs `npm run build` to produce an optimised production bundle in `/app/build`.
+
+**Stage 2 — serve**: Uses `nginx:alpine`, a minimal image under 10 MB. It copies only the compiled `/app/build` directory from the previous stage into Nginx's default HTML root. Node.js is not present in this final image.
+
+Nginx listens on port **80 inside the container**. The `docker run` command maps that to port **3000 on your host**.
+
+## Steps
+
+<Steps>
+  <Step title="Confirm prerequisites">
+    You need Docker installed and running on your machine. Verify with:
+
+    ```bash
+    docker --version
+    ```
+
+    You also need the backend API running and reachable from inside the container. The default `.env` value `http://host.docker.internal:8080` works on Docker Desktop (macOS and Windows) because `host.docker.internal` resolves to the host machine's loopback address from within a container.
+  </Step>
+
+  <Step title="Set the API URL before building">
+    Edit `.env` in the project root to point to your backend:
+
+    ```bash
+    REACT_APP_API_URL=http://host.docker.internal:8080
+    ```
+
+    If you are deploying to a server where the backend has its own hostname or IP address, replace the value accordingly. Alternatively, pass the variable as a build argument (see the note below the steps).
+  </Step>
+
+  <Step title="Build the Docker image">
+    From the project root (where the `Dockerfile` lives), run:
+
+    ```bash
+    docker build -t frontend .
+    ```
+
+    Docker executes both stages in sequence. The first time this runs, it downloads the `node:20` and `nginx:alpine` base images, which may take a few minutes. Subsequent builds reuse cached layers.
+  </Step>
+
+  <Step title="Run the container">
+    Start a container from the image and bind port 3000 on your host to port 80 inside the container:
+
+    ```bash
+    docker run -p 3000:80 frontend
+    ```
+
+    The `-p 3000:80` flag follows the format `host_port:container_port`. Nginx inside the container listens on 80; you access the app on 3000.
+  </Step>
+
+  <Step title="Open the application">
+    With the container running, open your browser and navigate to:
+
+    ```
+    http://localhost:3000
+    ```
+
+    You should see the Sistema de Gestión interface with the Alumnos, Materias, and Notas navigation buttons.
+  </Step>
+</Steps>
+
+## Passing the API URL at build time
+
+If you prefer not to rely on a `.env` file, you can pass `REACT_APP_API_URL` as a Docker build argument. Adjust the Dockerfile to accept it:
+
+```dockerfile
+ARG REACT_APP_API_URL
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+```
+
+Then supply the value during `docker build`:
+
+```bash
+docker build \
+  --build-arg REACT_APP_API_URL=http://your-backend-host:8080 \
+  -t frontend .
+```
+
+<Warning>
+  Build arguments passed with `--build-arg` are visible in the image layer history (`docker history`). Do not use this mechanism for secrets or credentials — only for public configuration values such as API base URLs.
+</Warning>
+
+## Quick reference
+
+| Command | Purpose |
+|---|---|
+| `docker build -t frontend .` | Build the image and tag it as `frontend` |
+| `docker run -p 3000:80 frontend` | Run the container, host port 3000 → container port 80 |
+| `docker run -d -p 3000:80 frontend` | Run in detached (background) mode |
+| `docker ps` | List running containers |
+| `docker stop <container_id>` | Stop a running container |

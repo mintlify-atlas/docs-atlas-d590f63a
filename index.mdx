@@ -1,133 +1,58 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
-icon: 'star'
+title: "Sistema de Gestión: Academic Record Management App"
+description: "Sistema de Gestión is a React frontend for managing students, subjects, and grades. Built with Axios and served via Nginx in Docker."
 ---
 
-## Setting up
+Sistema de Gestión is a React-based web application that lets you manage a complete academic record system — students (alumnos), subjects (materias), and grade assignments (notas) — through a clean, tab-driven interface backed by a REST API.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get the app running locally or with Docker in minutes
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Docker Deployment" icon="docker" href="/docker-deployment">
+    Build and serve the app with the multi-stage Nginx image
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Student Management" icon="user-graduate" href="/features/students">
+    Create, edit, and delete student records with full validation
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Grade Recording" icon="star" href="/features/grades">
+    Assign numeric grades linking students to subjects
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What you can do
 
-Everything you need to create world-class documentation.
+Sistema de Gestión provides three fully integrated management modules accessible from a top navigation menu:
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+<CardGroup cols={3}>
+  <Card title="Students" icon="users" href="/features/students">
+    Manage student profiles including name, email, and date of birth
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="Subjects" icon="book" href="/features/subjects">
+    Organize the academic subjects your students are enrolled in
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
+  <Card title="Grades" icon="chart-bar" href="/features/grades">
+    Record and update numeric grades per student per subject
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+</CardGroup>
 
-## Make your content agent ready
+## How it works
 
-Make your docs work for humans and AI agents alike.
+<Steps>
+  <Step title="Start the backend API">
+    The frontend connects to a REST API configured via the `REACT_APP_API_URL` environment variable. Start your backend before running the frontend.
+  </Step>
+  <Step title="Run the frontend">
+    Use `npm start` for local development or build a Docker image for production deployment with Nginx.
+  </Step>
+  <Step title="Navigate the app">
+    Use the top menu to switch between **Alumnos**, **Materias**, and **Notas** views.
+  </Step>
+  <Step title="Manage records">
+    Create new records with the form at the top of each view. Click **Editar** on any list item to populate the form for updates, or **Eliminar** to delete.
+  </Step>
+</Steps>
 
-<Columns cols={2}>
-  <Card
-    title="Prompt component"
-    icon="robot"
-    href="/agent-ready/prompt"
-  >
-    Embed shareable AI prompts readers can copy or open in Cursor.
-  </Card>
-  <Card
-    title="Visibility"
-    icon="eye"
-    href="/agent-ready/visibility"
-  >
-    Show different content to humans and agents reading your docs.
-  </Card>
-  <Card
-    title="Contextual menu"
-    icon="bolt"
-    href="/agent-ready/contextual"
-  >
-    Give readers one-click access to Claude, ChatGPT, Cursor, and more.
-  </Card>
-  <Card
-    title="AI coding tools"
-    icon="wand-magic-sparkles"
-    href="/ai-tools/claude-code"
-  >
-    Set up Claude Code, Cursor, or Windsurf with Mintlify's skill.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<Note>
+  You must have the backend API running before starting the frontend. See [Backend Requirements](/configuration/backend-requirements) for details.
+</Note>

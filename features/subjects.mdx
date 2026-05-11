@@ -1,0 +1,63 @@
+---
+title: "Subject Management: Build and Manage Your Course Catalog"
+description: "Discover how to add, rename, and remove subjects (materias), understand the single-field data model, and the deletion guard that prevents orphaned grades."
+keywords: ["subjects", "materias", "CRUD", "subject management", "course catalog"]
+---
+
+The Subjects (Materias) module provides a simple catalog of courses that can be assigned grades. A subject has a single field — its name — making the form minimal and fast to use. The list is sorted alphabetically so you can scan it without scrolling through unsorted entries. Like the Students module, the form title changes between **Crear Materia** and **Editar Materia** depending on whether you are creating a new subject or modifying an existing one.
+
+## Subject data fields
+
+<ParamField body="nombre" type="string" required>
+  Subject name. This is the only field. The list is sorted alphabetically by this value.
+</ParamField>
+
+## How to create a subject
+
+<Steps>
+  <Step title="Open the Subjects section">
+    Navigate to the Subjects section of the application. The form appears above the subject list with the title **Crear Materia**.
+  </Step>
+  <Step title="Enter the subject name">
+    Type the subject name into the **Nombre de la materia** field.
+
+    <Note>
+      If you submit with an empty name, a modal dialog appears with the message "El nombre de la materia es obligatorio". Click **Cerrar** to dismiss it, then enter a name before submitting again.
+    </Note>
+  </Step>
+  <Step title="Save the record">
+    Click **Guardar**. The form sends a `POST /materias` request. On success, the input clears and the list refreshes with the new subject inserted in alphabetical order.
+  </Step>
+</Steps>
+
+## How to edit a subject
+
+Click **Editar** next to any subject in the list. The form pre-populates with the subject's current name and the title changes to **Editar Materia**. Update the name and click **Guardar**. The form sends a `PUT /materias/:id` request and the list refreshes.
+
+## Deleting a subject
+
+<Warning>
+  You cannot delete a subject that has grades registered against it. Attempting to do so displays an error modal: "La materia tiene notas registradas en el sistema, elimínelas primero para proceder con la eliminación de la materia." Remove all related grades first (see [Grades](/features/grades)), then delete the subject.
+</Warning>
+
+Click **Eliminar** next to the subject you want to remove. If no grades reference the subject, the delete succeeds and the list refreshes. If grades exist, the error modal is displayed and the subject remains.
+
+## API reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/materias` | Fetch all subjects. The response array is sorted client-side by `nombre`. |
+| `POST` | `/materias` | Create a new subject. Body: `{ nombre }`. |
+| `PUT` | `/materias/:id` | Update a subject's name by ID. Body: `{ nombre }`. |
+| `DELETE` | `/materias/:id` | Delete a subject by ID. Returns an error if grades are associated with it. |
+
+The base URL is set via the `REACT_APP_API_URL` environment variable. See [Environment configuration](/configuration/environment) for details.
+
+<CardGroup cols={2}>
+  <Card title="Students" icon="user" href="/features/students">
+    Manage student records linked to grade entries.
+  </Card>
+  <Card title="Grades" icon="star" href="/features/grades">
+    Record grades that connect students and subjects.
+  </Card>
+</CardGroup>

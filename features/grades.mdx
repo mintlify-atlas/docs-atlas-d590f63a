@@ -1,0 +1,92 @@
+---
+title: "Recording and Managing Grades in Sistema de Gestión"
+description: "Link students to subjects with numeric grades, learn how dropdowns are populated, the exact API payload structure, and how to edit or delete grade entries."
+keywords: ["grades", "notas", "CRUD", "grade entry", "student grades", "score"]
+---
+
+The Grades (Notas) module ties students and subjects together with a numeric score. Rather than asking you to type IDs, the form fetches the full lists of students and subjects from the API on load and presents them as dropdown menus. Students appear sorted alphabetically by last name so you can find the right person quickly. There is no deletion guard on grades — you can remove any entry directly, which also unblocks the deletion of the related student or subject.
+
+## Grade data fields
+
+<ParamField body="alumnoId" type="number" required>
+  ID of the student. Selected from a dropdown populated by `GET /alumnos`, sorted by `apellido`.
+</ParamField>
+
+<ParamField body="materiaId" type="number" required>
+  ID of the subject. Selected from a dropdown populated by `GET /materias`.
+</ParamField>
+
+<ParamField body="valor" type="number" required>
+  Numeric grade value. The input uses `step="0.1"`, allowing decimal scores such as `7.5` or `10.0`.
+</ParamField>
+
+## How to record a grade
+
+<Steps>
+  <Step title="Open the Grades section">
+    Navigate to the Grades section. On mount, the form fetches `/alumnos` and `/materias` to populate the two dropdowns. Wait for both dropdowns to load before submitting.
+  </Step>
+  <Step title="Select a student">
+    Choose a student from the **Seleccionar alumno** dropdown. Students are listed as "Apellido Nombre", sorted alphabetically by last name.
+  </Step>
+  <Step title="Select a subject">
+    Choose a subject from the **Seleccionar materia** dropdown.
+  </Step>
+  <Step title="Enter the grade value">
+    Type a numeric value in the **Nota** field. Decimal values with one decimal place are supported (e.g., `8.5`).
+  </Step>
+  <Step title="Save the grade">
+    Click **Guardar Nota**. The form submits the payload below and the list refreshes on success.
+  </Step>
+</Steps>
+
+## Request payload
+
+The form does not send flat IDs. It wraps the student and subject references in nested objects to match the backend's expected structure:
+
+```json
+{
+  "id": null,
+  "valor": 8.5,
+  "alumno": {
+    "id": 3
+  },
+  "materia": {
+    "id": 1
+  }
+}
+```
+
+When editing an existing grade, `id` contains the grade's numeric identifier. When creating a new grade, `id` is `null`.
+
+## How to edit a grade
+
+Click **Editar** next to any grade in the list. The form pre-populates the student dropdown, subject dropdown, and valor field with the existing values. Update the fields you want to change and click **Guardar Nota**. The form sends a `PUT /notas/:id` request with the same nested payload structure shown above.
+
+## Deleting a grade
+
+Click **Eliminar** next to the grade you want to remove. The delete is immediate — there is no confirmation dialog or guard. The form sends a `DELETE /notas/:id` request and the list refreshes on success.
+
+<Tip>
+  Deleting a grade is the required first step before you can delete the student or subject it references. See [Students](/features/students) and [Subjects](/features/subjects) for details on their deletion guards.
+</Tip>
+
+## API reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/notas` | Fetch all grades. The response is sorted client-side by `alumnoApellido`. |
+| `POST` | `/notas` | Create a new grade. Body: nested payload with `alumno.id`, `materia.id`, and `valor`. |
+| `PUT` | `/notas/:id` | Update an existing grade by ID. Body: same nested payload including the grade `id`. |
+| `DELETE` | `/notas/:id` | Delete a grade by ID. No guard — succeeds unconditionally. |
+
+The base URL is configured via the `REACT_APP_API_URL` environment variable. See [Environment configuration](/configuration/environment) for details.
+
+<CardGroup cols={2}>
+  <Card title="Students" icon="user" href="/features/students">
+    Manage the student records referenced by grade entries.
+  </Card>
+  <Card title="Subjects" icon="book" href="/features/subjects">
+    Manage the subjects that grades are recorded against.
+  </Card>
+</CardGroup>

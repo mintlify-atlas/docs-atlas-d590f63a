@@ -1,0 +1,75 @@
+---
+title: "Student Management: Create, Edit, and Delete Records"
+description: "Learn how to create, edit, and delete student records, understand field requirements, validation rules, and the deletion guard that protects data integrity."
+keywords: ["students", "alumnos", "CRUD", "student management", "form validation"]
+---
+
+The Students (Alumnos) module lets you maintain a full registry of students. Each record stores personal and contact information, and the list is always sorted alphabetically by last name so you can locate any student at a glance. All create and update operations go through a single shared form that adapts its title and behavior based on whether a record is being created or edited.
+
+## Student data fields
+
+<ParamField body="nombre" type="string" required>
+  Student's first name.
+</ParamField>
+
+<ParamField body="apellido" type="string" required>
+  Student's last name. The list is sorted alphabetically by this field.
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  Student's email address.
+</ParamField>
+
+<ParamField body="fechaNacimiento" type="string" required>
+  Student's date of birth in `YYYY-MM-DD` format, entered with a date picker.
+</ParamField>
+
+## How to create a student
+
+<Steps>
+  <Step title="Open the Students section">
+    Navigate to the Students section of the application. The form is displayed above the student list with the title **Crear Alumno**.
+  </Step>
+  <Step title="Fill in all fields">
+    Enter the student's first name (**Nombre**), last name (**Apellido**), email (**Email**), and date of birth (**Fecha de Nacimiento**). All four fields are required.
+
+    <Note>
+      If you submit the form with any field empty, a modal dialog will appear with the message "Todos los campos son obligatorios". Dismiss it by clicking **Cerrar** and complete the missing fields.
+    </Note>
+  </Step>
+  <Step title="Save the record">
+    Click **Guardar**. The form sends a `POST /alumnos` request with the student data. On success, the form clears and the list refreshes with the new student inserted in alphabetical order by last name.
+  </Step>
+</Steps>
+
+## How to edit a student
+
+Click **Editar** next to any student in the list. The form pre-populates with that student's data and its title changes to **Editar Alumno**. Make your changes and click **Guardar**. The form sends a `PUT /alumnos/:id` request and the list refreshes.
+
+## Deleting a student
+
+<Warning>
+  You cannot delete a student who has grades registered in the system. Attempting to do so will display an error modal: "El alumno tiene notas registradas en el sistema, elimínelas primero para proceder con la eliminación del alumno." Delete all grades for the student first (see [Grades](/features/grades)), then return here to delete the student record.
+</Warning>
+
+Click **Eliminar** next to the student you want to remove. If the deletion succeeds, the list refreshes immediately. If the backend rejects the request because grades exist, the error modal is shown instead.
+
+## API reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/alumnos` | Fetch all students. The response array is sorted client-side by `apellido`. |
+| `POST` | `/alumnos` | Create a new student. Body: `{ nombre, apellido, email, fechaNacimiento }`. |
+| `PUT` | `/alumnos/:id` | Update an existing student by ID. Body: same fields as POST. |
+| `DELETE` | `/alumnos/:id` | Delete a student by ID. Returns an error if the student has associated grades. |
+
+The base URL is configured via the `REACT_APP_API_URL` environment variable. See [Environment configuration](/configuration/environment) for details.
+
+<CardGroup cols={2}>
+  <Card title="Subjects" icon="book" href="/features/subjects">
+    Manage the subjects that students are graded in.
+  </Card>
+  <Card title="Grades" icon="star" href="/features/grades">
+    Record and manage grade entries that link students to subjects.
+  </Card>
+</CardGroup>

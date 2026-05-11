@@ -1,0 +1,239 @@
+---
+title: 'Axios API Integration and HTTP Client in Sistema de Gestión'
+description: 'How Sistema de Gestión configures Axios, reads REACT_APP_API_URL, and performs GET, POST, PUT, and DELETE requests across all feature modules.'
+keywords: ['axios', 'api', 'http', 'rest', 'react_app_api_url', 'fetch', 'error handling']
+---
+
+Every HTTP request in the application flows through a single shared Axios instance defined in `src/services/api.js`. This centralises the base URL configuration and makes it straightforward to add interceptors or default headers in the future. All six feature components import this instance directly — no fetch calls or additional HTTP libraries are used.
+
+## The Axios instance
+
+`src/services/api.js` creates and exports one Axios instance with `baseURL` set from the `REACT_APP_API_URL` environment variable.
+
+```js src/services/api.js
+import axios from "axios";
+
+const api = axios.create({
+  baseURL: process.env.REACT_APP_API_URL
+});
+
+export default api;
+```
+
+`REACT_APP_API_URL` must be defined at build time (Create React App inlines environment variables prefixed with `REACT_APP_` during `npm run build`). A typical value is `http://localhost:8080`. See [Environment Configuration](/configuration/environment) for how to set this in Docker.
+
+<Warning>
+If `REACT_APP_API_URL` is undefined at build time, all API calls will use a relative path and will fail unless the backend is served from the same origin.
+</Warning>
+
+## Importing the client
+
+Each component imports `api` with the same one-liner:
+
+```js
+import api from "../../services/api";
+```
+
+## HTTP methods in use
+
+The application uses all four standard REST methods. The examples below are taken directly from the component source code.
+
+<CodeGroup>
+
+```js GET — load list
+// AlumnosLista.js
+api.get("/alumnos")
+  .then(res => {
+    const ordenados = [...res.data].sort((a, b) =>
+      a.apellido.localeCompare(b.apellido)
+    );
+    setAlumnos(ordenados);
+  })
+  .catch(err => console.log(err));
+
+// MateriasLista.js
+api.get("/materias")
+  .then(res => {
+    const ordenadas = [...res.data].sort((a, b) =>
+      a.nombre.localeCompare(b.nombre)
+    );
+    setMaterias(ordenadas);
+  });
+
+// NotasLista.js
+api.get("/notas")
+  .then(res => {
+    const ordenadas = res.data.sort((a, b) =>
+      a.alumnoApellido.localeCompare(b.alumnoApellido)
+    );
+    setNotas(ordenadas);
+  });
+```
+
+```js POST — create record
+// AlumnosFormulario.js
+api.post("/alumnos", alumno)
+  .then(() => alGuardar());
+
+// MateriasFormulario.js
+api.post("/materias", materia)
+  .then(() => alGuardar());
+
+// NotasFormulario.js — nested object payload
+const payload = {
+  id: nota.id,
+  valor: nota.valor,
+  alumno: { id: nota.alumnoId },
+  materia: { id: nota.materiaId }
+};
+api.post("/notas", payload)
+  .then(() => {
+    alGuardar();
+    setNota({ alumnoId: "", materiaId: "", valor: "" });
+  });
+```
+
+```js PUT — update record
+// AlumnosFormulario.js
+api.put(`/alumnos/${alumno.id}`, alumno)
+  .then(() => alGuardar());
+
+// MateriasFormulario.js
+api.put(`/materias/${materia.id}`, materia)
+  .then(() => alGuardar());
+
+// NotasFormulario.js
+api.put(`/notas/${nota.id}`, payload)
+  .then(() => {
+    alGuardar();
+    setNota({ alumnoId: "", materiaId: "", valor: "" });
+  });
+```
+
+```js DELETE — remove record
+// AlumnosLista.js
+api.delete(`/alumnos/${alumno.id}`)
+  .then(() => cargarAlumnos())
+  .catch(error => {
+    const mensaje = error.response?.data?.message;
+    setError(mensaje || "Error: el alumno tiene notas registradas...");
+    setMostrarError(true);
+  });
+
+// MateriasLista.js
+api.delete(`/materias/${materia.id}`)
+  .then(() => cargarMaterias())
+  .catch(error => {
+    const mensaje = error.response?.data?.message;
+    setError(mensaje || "Error: la materia tiene notas registradas...");
+    setMostrarError(true);
+  });
+
+// NotasLista.js
+api.delete(`/notas/${id}`)
+  .then(() => cargar())
+  .catch(err => console.log(err));
+```
+
+</CodeGroup>
+
+## Response data shapes
+
+The shapes below are inferred from how each component reads `res.data`.
+
+### Alumno
+
+```json
+{
+  "id": 1,
+  "nombre": "Juan",
+  "apellido": "Pérez",
+  "email": "juan.perez@example.com",
+  "fechaNacimiento": "2000-05-15"
+}
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | number | Primary key, present on existing records |
+| `nombre` | string | First name |
+| `apellido` | string | Last name, used for alphabetical sorting |
+| `email` | string | Email address |
+| `fechaNacimiento` | string | ISO date string (`YYYY-MM-DD`) |
+
+### Materia
+
+```json
+{
+  "id": 3,
+  "nombre": "Matemáticas"
+}
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | number | Primary key |
+| `nombre` | string | Subject name, used for alphabetical sorting |
+
+### Nota
+
+```json
+{
+  "id": 7,
+  "alumnoId": 1,
+  "alumnoNombre": "Juan",
+  "alumnoApellido": "Pérez",
+  "materiaId": 3,
+  "materiaNombre": "Matemáticas",
+  "valor": 8.5
+}
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | number | Primary key |
+| `alumnoId` | number | Foreign key to Alumno |
+| `alumnoNombre` | string | Denormalised first name for display |
+| `alumnoApellido` | string | Denormalised last name, used for sorting |
+| `materiaId` | number | Foreign key to Materia |
+| `materiaNombre` | string | Denormalised subject name for display |
+| `valor` | number | Numeric grade value (step 0.1) |
+
+<Note>
+The POST/PUT payload for Notas uses a **nested object** format rather than flat IDs: `{ alumno: { id }, materia: { id }, valor }`. This matches the backend's expected request body.
+</Note>
+
+## Error handling patterns
+
+Two distinct patterns are used across the components.
+
+**Validation errors (client-side):** Form components validate required fields before making any network call. If validation fails, they set an `error` string and set `mostrarError` to `true`, which renders a modal overlay with the message.
+
+```js Client-side validation (AlumnosFormulario.js)
+if (
+  !alumno.nombre.trim() ||
+  !alumno.apellido.trim() ||
+  !alumno.email.trim() ||
+  !alumno.fechaNacimiento
+) {
+  setError("Todos los campos son obligatorios");
+  setMostrarError(true);
+  return; // abort — no API call is made
+}
+```
+
+**Server errors (DELETE constraints):** List components catch errors from DELETE requests and display the backend's `message` field if present, or a default message explaining that the record has dependent grades.
+
+```js Server error handling (AlumnosLista.js)
+api.delete(`/alumnos/${alumno.id}`)
+  .catch((error) => {
+    const mensaje = error.response?.data?.message;
+    setError(
+      mensaje ||
+      "Error: el alumno tiene notas registradas en el sistema..."
+    );
+    setMostrarError(true);
+  });
+```
+
+The error modal is dismissed by clicking a close button that sets `mostrarError` back to `false`.
